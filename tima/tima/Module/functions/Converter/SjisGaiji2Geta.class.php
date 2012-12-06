@@ -26,7 +26,7 @@
  * 
  * @package    tima
  * @subpackage tima_Converter
- * @version    SVN: $Id: SjisGaiji2Geta.class.php 6 2007-08-17 08:46:57Z do_ikare $
+ * @version    SVN: $Id: SjisGaiji2Geta.class.php 24 2007-09-10 09:53:59Z do_ikare $
  */
 class Converter_SjisGaiji2Geta extends Converter_AbstractConverter
 {
@@ -112,9 +112,11 @@ class Converter_SjisGaiji2Geta extends Converter_AbstractConverter
             $pattern = '[' . implode('', $gaiji) . ']';
         }
 
+        $regex_encoding = mb_regex_encoding();
         mb_regex_encoding('SJIS');
+        $buf = mb_ereg_replace($pattern, "\x81\xAC", $attribute);
+        mb_regex_encoding($regex_encoding);
 
-        return 
-            mb_ereg_replace($pattern, "\x81\xAC", $attribute);
+        return $buf;
     }
 }

@@ -26,7 +26,7 @@
  * 
  * @package    tima
  * @subpackage tima_Filter
- * @version    SVN: $Id: NoCache.class.php 35 2007-09-28 02:03:08Z do_ikare $
+ * @version    SVN: $Id$
  */
 class Filter_NoCache
 {

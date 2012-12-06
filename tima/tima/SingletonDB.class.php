@@ -25,7 +25,7 @@
  * Singleton DB
  * 
  * @package  tima
- * @version  SVN: $Id: SingletonDB.class.php 32 2007-09-19 08:16:42Z do_ikare $
+ * @version  SVN: $Id: SingletonDB.class.php 37 2007-10-12 06:51:54Z do_ikare $
  */
 class SingletonDB
 {
@@ -36,24 +36,21 @@ class SingletonDB
      * @var    DB
      * @access private
      */
+    var $_db = null;
 
     /**
      * コンストラクタ
      * 
-     * @param  void
+     * @param  string $dsn
+     * @param  array  $options
      * @return void
-     * @access public
+     * @access protected
      */
-    function SingletonDB($dsn)
+    function SingletonDB($dsn, $options)
     {
-        $options = array(
-                'autofree'       => false, 
-                'debug'          => 0, 
-                'persistent'     => false, 
-                'portability'    => DB_PORTABILITY_NONE, 
-                'seqname_format' => '%s_seq', 
-                'ssl'            => false, 
-            );
+        /* @use DB */
+        require_once 'DB.php';
+
         $this->_db =& DB::connect($dsn, $options);
 
         if (PEAR::isError($this->_db)) {
@@ -64,7 +61,6 @@ class SingletonDB
             exit;
         }
 
-        $this->_db->autoCommit(true);
         $this->_db->setFetchMode(DB_FETCHMODE_ASSOC);
     }
 
@@ -75,24 +71,14 @@ class SingletonDB
      * @return DB
      * @access public
      */
-    function &getInstance($dsn = null)
+    function &getInstance($dsn = null, $options = array())
     {
-        static $db;
+        static $_self;
 
-        if (!isset($db)) {
-            if ($dsn === null) {
-                header('HTTP/1.1 500 Internal Server Error');
-                trigger_error('DB is not connected', E_USER_ERROR);
-                exit;
-            }
-            $db = new SingletonDB($dsn);
-        } else {
-            if ($dsn !== null) {
-                trigger_error('$dsn was not used', E_USER_WARNING);
-            }
-        }
+        if ($dsn !== null) $_self = new SingletonDB($dsn, $options);
 
-        $instance = &$db->getDB();
+        $instance = null;
+        if (isset($_self)) $instance = &$_self->getDB();
 
         return $instance;
     }

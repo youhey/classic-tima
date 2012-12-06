@@ -188,6 +188,10 @@ require_once
 require_once 
     ROOT_PATH . DS . 'DateController.class.php';
 
+/* @use SingletonDB */
+require_once 
+    ROOT_PATH . DS . 'SingletonDB.class.php';
+
 /* @use Question_Common */
 require_once 
     ROOT_PATH . DS . 'Question' . DS . 'Common.class.php';

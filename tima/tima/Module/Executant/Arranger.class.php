@@ -30,7 +30,7 @@ require_once
  * 
  * @package    tima
  * @subpackage tima_Arranger
- * @version    SVN: $Id: Arranger.class.php 6 2007-08-17 08:46:57Z do_ikare $
+ * @version    SVN: $Id: Arranger.class.php 39 2007-10-16 06:43:35Z do_ikare $
  */
 class Module_Executant_Arranger extends Module_Executant_AbstractExecutant
 {
@@ -70,6 +70,6 @@ class Module_Executant_Arranger extends Module_Executant_AbstractExecutant
         }
 
         return
-            $this->execute($arranger_name, (string)$attributes, $params);
+            $this->execute($arranger_name, $attributes, $params);
     }
 }

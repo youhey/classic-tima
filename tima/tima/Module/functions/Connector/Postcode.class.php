@@ -26,7 +26,7 @@
  * 
  * @package    tima
  * @subpackage tima_Connector
- * @version    SVN: $Id: Postcode.class.php 4 2007-06-20 07:16:44Z do_ikare $
+ * @version    SVN: $Id: Postcode.class.php 38 2007-10-16 06:43:01Z do_ikare $
  */
 class Connector_Postcode extends Connector_AbstractConnector
 {
@@ -44,39 +44,12 @@ class Connector_Postcode extends Connector_AbstractConnector
      */
     function doFunction($attribute, $params)
     {
-        // $format = '¢©%1$s-%2$s';
-        $format = '%1$s-%2$s';
-        if (($param  = array_shift($params)) !== null) {
-            $format = (string)$param;
-        }
-
-        $specific = false;
-        $first    = '';
-        $last     = '';
-        foreach (array_keys($attribute) as $varkey) {
-            switch (strtolower($varkey)) {
-            case 'first' : 
-                $specific = true;
-                $first    = trim((string)$attribute[$varkey]);
-                break;
-            case 'last' : 
-                $specific = true;
-                $last     = trim((string)$attribute[$varkey]);
-                break;
-            }
-        }
-        if ($specific !== true) {
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $first = trim((string)$varvalue);
-            }
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $last = trim((string)$varvalue);
-            }
-        }
+        $first = isset($attribute['first']) ? $attribute['first'] : '';
+        $last  = isset($attribute['last'])  ? $attribute['last']  : '';
 
         $postcode = '';
         if (($first !== '') && ($last !== '')) {
-            $postcode = sprintf($format, $first, $last);
+            $postcode = "${first}-${last}";
         }
 
         return $postcode;

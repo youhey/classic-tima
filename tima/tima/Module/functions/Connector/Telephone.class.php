@@ -26,7 +26,7 @@
  * 
  * @package    tima
  * @subpackage tima_Connector
- * @version    SVN: $Id: Telephone.class.php 4 2007-06-20 07:16:44Z do_ikare $
+ * @version    SVN: $Id: Telephone.class.php 38 2007-10-16 06:43:01Z do_ikare $
  */
 class Connector_Telephone extends Connector_AbstractConnector
 {
@@ -44,49 +44,13 @@ class Connector_Telephone extends Connector_AbstractConnector
      */
     function doFunction($attribute, $params)
     {
-
-        $format = '%1$s-%2$s-%3$s';
-        if (($param = array_shift($params)) !== null) {
-            $format = (string)$param;
-        }
-
-        $specific = false;
-        $area     = '';
-        $city     = '';
-        $local    = '';
-        foreach (array_keys($attribute) as $varkey) {
-            switch (strtolower($varkey)) {
-            case 'area' : 
-            case 'pref' : 
-            case 'prefecture' : 
-                $specific = true;
-                $area     = trim((string)$attribute[$varkey]);
-                break;
-            case 'city' : 
-                $specific = true;
-                $city     = trim((string)$attribute[$varkey]);
-                break;
-            case 'local' : 
-                $specific = true;
-                $local    = trim((string)$attribute[$varkey]);
-                break;
-            }
-        }
-        if ($specific !== true) {
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $area = trim((string)$varvalue);
-            }
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $city = trim((string)$varvalue);
-            }
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $local = trim((string)$varvalue);
-            }
-        }
+        $area  = isset($attribute['area'])  ? $attribute['area']  : '';
+        $city  = isset($attribute['city'])  ? $attribute['city']  : '';
+        $local = isset($attribute['local']) ? $attribute['local'] : '';
 
         $telephone = '';
         if (($area !== '') && ($city !== '') && ($local !== '')) {
-            $telephone = sprintf($format, $area, $city, $local);
+            $telephone = "${area}-${city}-${local}";
         }
 
         return $telephone;

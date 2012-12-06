@@ -21,14 +21,12 @@
  * @version  1.0.0
  */
 
-
 /**
  * フロント・コントローラ
  * 
  * @package  tima
- * @version  SVN: $Id: Front.class.php 35 2007-09-28 02:03:08Z do_ikare $
+ * @version  SVN: $Id: Front.class.php 37 2007-10-12 06:51:54Z do_ikare $
  */
-
 class Front
 {
 
@@ -284,18 +282,20 @@ class Front
      *  - 一般的なユーザエージェントとの互換性を考慮して302ステータスコードに
      *  - 将来的に警告など出すユーザエージェントが出てきたら再考
      * 
-     * @param  string $uri
+     * @param  string     $link
      * @param  array|null $params
      * @param  string     $status_code
      * @return void
      * @access public
      */
-    function redirect($url, $params = array(), $status_code = '302')
+    function redirect($link, $params = array(), $status_code = '302')
     {
+        $url = htmlentities($link, ENT_QUOTES, $this->getHttpCharSet());
+
         if (is_array($params) && (count($params) > 0)) {
             $query = array();
             foreach ($params as $varkey => $varvalue) {
-                $query[] = "${varkey}=${varvalue}";
+                $query[] = urlencode($varkey) . '=' . urlencode($varvalue);
             }
             $url .= '?' . implode('&', $query);
         }
@@ -305,11 +305,9 @@ class Front
         $this->_response->setHeader('Location', $url);
 
         $this->_response->setContents(
-            sprintf(
-                '<html><head>' . 
-                '<meta http-equiv="refresh" content="0;url=%s" />' . 
-                '</head></html>', 
-                htmlentities($url, ENT_QUOTES, $this->getHttpCharSet())));
+            "<html><head>\n" . 
+            "<meta http-equiv=\"refresh\" content=\"0;url=${url}\" />\n" . 
+            "</head></html>\n");
     }
 
     /**

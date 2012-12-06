@@ -26,7 +26,7 @@
  * 
  * @package    tima
  * @subpackage tima_Connector
- * @version    SVN: $Id: Time.class.php 6 2007-08-17 08:46:57Z do_ikare $
+ * @version    SVN: $Id: Time.class.php 38 2007-10-16 06:43:01Z do_ikare $
  */
 class Connector_Time extends Connector_AbstractConnector
 {
@@ -46,39 +46,12 @@ class Connector_Time extends Connector_AbstractConnector
     {
         $format = '%1$sª˛%2$s ¨%3$s…√';
         if (($param = array_shift($params)) !== null) {
-            $format = (string)$param;
+            $format = $param;
         }
 
-        $specific = false;
-        $hour     = '00';
-        $min      = '00';
-        $sec      = '00';
-        foreach (array_keys($attribute) as $varkey) {
-            switch (strtolower($varkey)) {
-            case 'hour' : 
-            case 'hr' : 
-                $specific = true;
-                $hour     = trim((string)$attribute[$varkey]);
-                break;
-            case 'minute' : 
-            case 'min' : 
-                $specific = true;
-                $min      = trim((string)$attribute[$varkey]);
-                break;
-            case 'second' : 
-            case 'sec' : 
-                $specific = true;
-                $sec      = trim((string)$attribute[$varkey]);
-                break;
-            }
-        }
-        if ($specific !== true) {
-            foreach (array('hour', 'min', 'sec') as $varkey) {
-                if (($varvalue = array_shift($attribute)) !== null) {
-                    $$varkey = trim((string)$varvalue);
-                }
-            }
-        }
+        $hour = isset($attribute['hour']) ? $attribute['hour'] : '';
+        $min  = isset($attribute['min'])  ? $attribute['min']  : '';
+        $sec  = isset($attribute['sec'])  ? $attribute['sec']  : '';
 
         $time = '';
         if (($hour !== '') && ($min !== '') && ($sec !== '')) {

@@ -28,7 +28,7 @@
  * クッキも使用するようであれば、このクラスまたは継承クラスに機能を実装する
  * 
  * @package  tima
- * @version  SVN: $Id: Response.class.php 6 2007-08-17 08:46:57Z do_ikare $
+ * @version  SVN: $Id: Response.class.php 37 2007-10-12 06:51:54Z do_ikare $
  */
 class Response
 {
@@ -134,16 +134,10 @@ class Response
     /**
      * コンストラクタ
      * 
-     * @param  string|null $status_code
-     * @param  string|null $status_text
      * @access public
      */
-    function Response($status_code = null, $status_text = null)
+    function Response()
     {
-        if ($status_code !== null) {
-            $this->setStatus($status_code, $status_text);
-        }
-
         if (isset($_SERVER['SERVER_PROTOCOL']) &&
             preg_match('/^(HTTP\/\d\.\d)$/', 
                        $_SERVER['SERVER_PROTOCOL'], $matches)) {
@@ -162,10 +156,10 @@ class Response
     function setStatus($status_code, $status_text = null)
     {
         if (!isset($this->_statusTextList[$status_code])) {
-            trigger_error(
-                "Status '${status_code}' is not of the type HTTP status", 
-                E_USER_WARNING);
-            return;
+            $this->_statusTextList[$status_code] = '';
+            if ($status_text !== null) {
+                $this->_statusTextList[$status_code] = $status_text;
+            }
         }
 
         if ($status_text === null) {
@@ -174,6 +168,18 @@ class Response
 
         $this->_statusCode = $status_code;
         $this->_statusText = $status_text;
+    }
+
+    /**
+     * ステータスを返却
+     * 
+     * @param  void
+     * @return string
+     * @access public
+     */
+    function getStatus()
+    {
+        return "{$this->_protocol} {$this->_statusCode} {$this->_statusText}";
     }
 
     /**
@@ -241,10 +247,54 @@ class Response
 
         if (!$replace) {
             $current = $this->getHeader($field_name);
-            $value   = (isset($current) ? $current . ', ' : '') . $value;
+            $value   = (($current !== '') ? $current . ', ' : '') . $value;
         }
 
         $this->_headerFields[$field_name] = $value;
+    }
+
+    /**
+     * HTTPヘッダのメッセージを返却
+     * 
+     * @param  string $name
+     * @return string
+     * @access public
+     */
+    function getHeader($name)
+    {
+        $field_name = $this->_normalizeFieldName($name);
+
+        $field_value = '';
+        if (isset($this->_headerFields[$field_name])) {
+            $field_value = $this->_headerFields[$field_name];
+        }
+
+        return $field_value;
+    }
+
+    /**
+     * HTTPヘッダのメッセージが登録されているか検査
+     * 
+     * @param  string $varkey
+     * @return boolean
+     * @access public
+     */
+    function isHeaderExists($varkey)
+    {
+        return 
+            isset($this->_headerFields[$varkey]);
+    }
+
+    /**
+     * 登録されているHTTPヘッダのメッセージを全消去
+     * 
+     * @param  void
+     * @return void
+     * @access public
+     */
+    function clearHeader()
+    {
+        $this->_headerFields = array();
     }
 
     /**
@@ -261,53 +311,6 @@ class Response
     }
 
     /**
-     * ボディパートを登録
-     * 
-     * @param  string $content
-     * @return void
-     * @access public
-     */
-    function setContents($content)
-    {
-        $this->_contents .= $content;
-    }
-
-    /**
-     * HTTPヘッダのメッセージを返却
-     * フィールドの名前が指定されれば指定フィールドのみを返却
-     * フィールドの名前が省略されていれば全てを配列で返却
-     * 
-     * @param  string|null $name
-     * @return string|array
-     * @access public
-     */
-    function getHeader($name = null)
-    {
-        if ($name === null) {
-            return $this->_headerFields;
-        }
-
-        $field_name  = $this->_normalizeFieldName($name);
-        $field_value = 
-            isset($this->_headerFields[$field_name]) ?
-                $this->_headerFields[$field_name] : null;
-
-        return $field_value;
-    }
-
-    /**
-     * ステータスを返却
-     * 
-     * @param  void
-     * @return string
-     * @access public
-     */
-    function getStatus()
-    {
-        return "{$this->_protocol} {$this->_statusCode} {$this->_statusText}";
-    }
-
-    /**
      * テンプレートのデータ・モデルを返却
      * 
      * @param  void
@@ -320,27 +323,15 @@ class Response
     }
 
     /**
-     * HTTPヘッダのメッセージが登録されているか検査
+     * ボディパートを登録
      * 
-     * @param  string $varkey
-     * @return boolean
-     * @access public
-     */
-    function isHeaderExists($varkey)
-    {
-        return isset($this->_headerFields[$varkey]);
-    }
-
-    /**
-     * 登録されているHTTPヘッダのメッセージを全消去
-     * 
-     * @param  void
+     * @param  string $content
      * @return void
      * @access public
      */
-    function clearHeader()
+    function setContents($content)
     {
-        $this->_headerFields = array();
+        $this->_contents = $content;
     }
 
     /**
@@ -360,13 +351,14 @@ class Response
                 E_USER_WARNING);
         } else {
             header($this->getStatus());
-            foreach ($this->getHeader() as $varname => $varvalue) {
+            foreach ($this->_headerFields as $varname => $varvalue) {
                 header($varname . ': ' . $varvalue);
             }
         }
         $this->clearHeader();
 
         print $this->_contents;
+
         $this->_contents = '';
     }
 

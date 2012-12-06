@@ -30,7 +30,7 @@ require_once
  * 
  * @package    tima
  * @subpackage tima_Converter
- * @version    SVN: $Id: Converter.class.php 6 2007-08-17 08:46:57Z do_ikare $
+ * @version    SVN: $Id: Converter.class.php 39 2007-10-16 06:43:35Z do_ikare $
  */
 class Module_Executant_Converter extends Module_Executant_AbstractExecutant
 {
@@ -55,7 +55,7 @@ class Module_Executant_Converter extends Module_Executant_AbstractExecutant
     function to($converter_name, $attributes)
     {
         return 
-            $this->execute($converter_name, (string)$attributes);
+            $this->execute($converter_name, $attributes);
     }
 
     /**

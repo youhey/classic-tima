@@ -34,7 +34,7 @@
  *   - validate：検証処理
  * 
  * @package  tima
- * @version  SVN: $Id: Action.class.php 35 2007-09-28 02:03:08Z do_ikare $
+ * @version  SVN: $Id: Action.class.php 43 2007-10-16 11:25:23Z do_ikare $
  */
 class Action
 {
@@ -103,14 +103,6 @@ class Action
     var $logger = null;
 
     /**
-     * 使用するモデル・クラス
-     * 
-     * @var    array
-     * @access protected
-     */
-    var $useModels = array();
-
-    /**
      * 公開しない（protected）メンバ変数の変数名
      * - 保護したいメンバ変数の変数名を羅列
      * - こんな手段でprotectedなあたりダサいし分かりづらい、要検討
@@ -127,7 +119,6 @@ class Action
             'session', 
             'logger', 
             'front', 
-            'useModels', 
         );
 
     /**
@@ -146,15 +137,6 @@ class Action
         $this->beginning = &$front->getBeginning();
         $this->logger    = &$front->getLogger();
         $this->question  = &new Question($this, $front->getAppDir());
-
-        if (!empty($this->useModels)) {
-            $class_loader = &new ClassLoader;
-            $class_loader->setParents('Model');
-            $class_loader->setIncludePath($this->front->getAppDir());
-            foreach ($this->useModels as $model) {
-                $class_loader->load($model);
-            }
-        }
     }
 
     /**
@@ -178,6 +160,60 @@ class Action
     function enable()
     {
         return true;
+    }
+
+    /**
+     * モデル・クラスを返却
+     * 
+     * @param  string $model
+     * @return string
+     * @access public
+     * @static ClassLoader $class_loader
+     */
+    function getModel($model)
+    {
+        static $class_loader;
+        if (!isset($class_loader)) {
+            $class_loader = &new ClassLoader;
+            $class_loader->setParents('Model');
+            $class_loader->setIncludePath($this->front->getAppDir());
+        }
+
+        return 
+            $class_loader->load($model);
+    }
+
+    /**
+     * モデル・クラスのインスタンスを生成
+     * 
+     * @param  string $model
+     * @params mixed  $args
+     * @return Object
+     * @access public
+     */
+    function &useModel($model, $args = null)
+    {
+        $class_name = $this->getModel($model);
+        if ($class_name === '') {
+            header('HTTP/1.0 500 Internal Server Error');
+            trigger_error("Model '${model}' not found", E_USER_ERROR);
+            exit;
+        }
+
+        $args = array();
+        for ($i = 1, $n = func_num_args(); $i < $n; ++$i) {
+            $args[] = func_get_arg($i);
+        }
+        $args = implode(',', $args);
+
+        $result = @eval("\$obj = &new ${class_name}(${args});");
+        if ($result === false) {
+            header('HTTP/1.0 500 Internal Server Error');
+            trigger_error("Unable to new the Model '${model}'", E_USER_ERROR);
+            exit;
+        }
+
+        return $obj;
     }
 
     /**

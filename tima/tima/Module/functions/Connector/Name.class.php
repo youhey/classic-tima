@@ -26,7 +26,7 @@
  * 
  * @package    tima
  * @subpackage tima_Connector
- * @version    SVN: $Id: Name.class.php 4 2007-06-20 07:16:44Z do_ikare $
+ * @version    SVN: $Id: Name.class.php 38 2007-10-16 06:43:01Z do_ikare $
  */
 class Connector_Name extends Connector_AbstractConnector
 {
@@ -36,6 +36,9 @@ class Connector_Name extends Connector_AbstractConnector
      * 
      * 引数「$params」の値で動作を制御
      * - 文字列の書式（sprintf()関数のフォーマット）
+     * - 値がない場合の「時」のデフォルト値（指定がなければ補完しない)
+     * - 値がない場合の「分」のデフォルト値（指定がなければ補完しない)
+     * - 値がない場合の「秒」のデフォルト値（指定がなければ補完しない)
      * 
      * @param  array      $attribute
      * @param  array|null $params
@@ -46,34 +49,13 @@ class Connector_Name extends Connector_AbstractConnector
     {
         $format = '%1$s　%2$s';
         if (($param = array_shift($params)) !== null) {
-            $format = (string)$param;
+            $format = $param;
         }
 
-        $specific   = false;
-        $familyname = '';
-        $firstname  = '';
-        foreach (array_keys($attribute) as $varkey) {
-            switch (strtolower($varkey)) {
-            case 'family' : 
-                $specific  = true;
-                $familyname = trim((string)$attribute[$varkey]);
-                break;
-            case 'first' : 
-                $specific = true;
-                $firstname = trim((string)$attribute[$varkey]);
-                break;
-            }
-        }
-        if ($specific !== true) {
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $familyname = trim((string)$varvalue);
-            }
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $firstname = trim((string)$varvalue);
-            }
-        }
+        $familyname = isset($attribute['family']) ? $attribute['family'] : '';
+        $firstname  = isset($attribute['first'])  ? $attribute['first']  : '';
 
-        $fullname = '';
+        $fullname   = '';
         if (($familyname !== '') && ($firstname !== '')) {
             $fullname = sprintf($format, $familyname, $firstname);
         }

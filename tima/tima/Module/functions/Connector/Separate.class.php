@@ -26,20 +26,25 @@
  * 
  * @package    tima
  * @subpackage tima_Connector
- * @version    SVN: $Id: Separate.class.php 6 2007-08-17 08:46:57Z do_ikare $
+ * @version    SVN: $Id: Separate.class.php 40 2007-10-16 06:51:38Z do_ikare $
  */
 class Connector_Separate extends Connector_AbstractConnector
 {
 
     /**
      * 長さ不定の配列を結合して文字列で返却
-     * 
-     * 値と値の結合子として指定された文字列を使用する
-     * 
-     * 区切りの結合子はデフォルトだとカンマ
-     * ※結合に使うセパレータ文字列は第二引数で指定
-     * 引数「$params」の値で動作を制御
-     * - 連結する文字列（指定がなければカンマ「,」）
+     * - 値と値の結合子として指定された文字列を使用する
+     * - 引数「$params」の値で動作を制御
+     *  - 区切りの結合子（デフォルトカンマ「,」）
+     * - Separateは他の連結処理と違い汎用の多目的な用途を想定するので、
+     *   値をtrimしてしまうのは副作用が強すぎる
+     *  - ("   1234", "   abcd", "    ....") => "1234,abcd,...."
+     *  - ("-a-\n-b-\n-c-\n", "-d-\n-e-\n")  => "-a-\n-b-\n-c-,-d-\n-e-"
+     *  - 改行を前後に入れる／空白でインデントなどできない
+     *    ただし改行／空白のみの値は連結すべきでないのでif文の評価でtrim
+     *   - ("   1234", "   abcd", "    ....") => "    1234,    abcd,    ...."
+     *   - ("-a-\n-b-\n-c-\n", "-d-\n-e-\n")  => "-a-\n-b-\n-c-\n,-d-\n-e-\n"
+     *   - ("aaa", "  ", "bbb", "\n", "ccc")  => "aaa,bbb,ccc"
      * 
      * @param  array      $attribute
      * @param  array|null $params
@@ -50,37 +55,21 @@ class Connector_Separate extends Connector_AbstractConnector
     {
         $separate = ',';
         if (($param = array_shift($params)) !== null) {
-            $separate = (string) $param;
+            $separate = $param;
         }
 
         $values = array();
-
         foreach (array_values($attribute) as $value) {
-            // [初期の処理]
-            // $value = trim((string) $value);
-            // if ($value === '') {
-            //     continue;
-            // }
-            // Separateは他の連結処理と違い汎用の多目的な用途を想定するので、
-            // 値をtrimしてしまうのは副作用が強すぎる
-            // --------------------------------------------------
-            // ("   1234", "   abcd", "    ....") => "1234,abcd,...."
-            // ("-a-\n-b-\n-c-\n", "-d-\n-e-\n")  => "-a-\n-b-\n-c-,-d-\n-e-"
-            // --------------------------------------------------
-            // 改行を前後に入れる／空白でインデントなどできない
-            // ただし改行／空白のみの値は連結すべきでないのでif文の評価でtrim
-            // --------------------------------------------------
-            // ("   1234", "   abcd", "    ....") => "    1234,    abcd,    ...."
-            // ("-a-\n-b-\n-c-\n", "-d-\n-e-\n")  => "-a-\n-b-\n-c-\n,-d-\n-e-\n"
-            // ("aaa", "  ", "bbb", "\n", "ccc")  => "aaa,bbb,ccc"
-            // --------------------------------------------------
-            $value = (string)$value;
+            if (is_array($value)) {
+                $value = $this->module->zip('separate', $value, $separate);
+            }
             if (trim($value) === '') {
                 continue;
             }
             $values[] = $value;
         }
 
-        return implode($separate, $values);
+        return 
+            implode($separate, $values);
     }
 }

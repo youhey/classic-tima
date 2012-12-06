@@ -30,7 +30,7 @@ require_once
  * 
  * @package    tima
  * @subpackage tima_Validator
- * @version    SVN: $Id: Validator.class.php 6 2007-08-17 08:46:57Z do_ikare $
+ * @version    SVN: $Id: Validator.class.php 39 2007-10-16 06:43:35Z do_ikare $
  */
 class Module_Executant_Validator extends Module_Executant_AbstractExecutant
 {
@@ -70,6 +70,6 @@ class Module_Executant_Validator extends Module_Executant_AbstractExecutant
         }
 
         return 
-            $this->execute($validator_name, (string)$attributes, $params);
+            $this->execute($validator_name, $attributes, $params);
     }
 }

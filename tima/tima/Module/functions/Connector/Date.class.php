@@ -26,7 +26,7 @@
  * 
  * @package    tima
  * @subpackage tima_Connector
- * @version    SVN: $Id: Date.class.php 4 2007-06-20 07:16:44Z do_ikare $
+ * @version    SVN: $Id: Date.class.php 38 2007-10-16 06:43:01Z do_ikare $
  */
 class Connector_Date extends Connector_AbstractConnector
 {
@@ -39,10 +39,6 @@ class Connector_Date extends Connector_AbstractConnector
      * 
      * 引数「$params」の値で動作を制御
      * - 文字列の書式（sprintf()関数のフォーマット）
-     * - 値が不足した場合にデフォルト値で補完をするか
-     * - 年のデフォルト値（指定がなければ「1970」)
-     * - 月のデフォルト値（指定がなければ「1」)
-     * - 日のデフォルト値（指定がなければ「1」)
      * 
      * @param  array      $attribute
      * @param  array|null $params
@@ -52,59 +48,13 @@ class Connector_Date extends Connector_AbstractConnector
     function doFunction($attribute, $params)
     {
         $format     = '%1$s年%2$s月%3$s日';
-        $supplement = false;
-        $year       = '1970';
-        $month      = '1';
-        $day        = '1';
         if (($param = array_shift($params)) !== null) {
-            $format = (string)$param;
-        }
-        if (($param = array_shift($params)) !== null) {
-            $supplement = (bool)$param;
-        }
-        if (($param = array_shift($params)) !== null) {
-            $year = (int)$param;
-        }
-        if (($param = array_shift($params)) !== null) {
-            $month = (int)$param;
-        }
-        if (($param = array_shift($params)) !== null) {
-            $day = (int)$param;
-        }
-        if ($supplement !== true) {
-            $year  = '';
-            $month = '';
-            $day   = '';
+            $format = $param;
         }
 
-        $specific = false;
-        foreach (array_keys($attribute) as $varkey) {
-            switch (strtolower($varkey)) {
-            case 'year' : 
-                $specific = true;
-                $year     = trim((string)$attribute[$varkey]);
-                break;
-            case 'month' : 
-                $specific = true;
-                $month    = trim((string)$attribute[$varkey]);
-                break;
-            case 'day' : 
-                $specific = true;
-                $day      = trim((string)$attribute[$varkey]);
-                break;
-            }
-        }
-        if ($specific !== true) {
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $year = trim((string)$varvalue);
-            }
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $month = trim((string)$varvalue);
-            }
-            if (($varvalue = array_shift($attribute)) !== null) {
-                $day = trim((string)$varvalue);
-            }
-        }
+        $year  = isset($attribute['year'])  ? $attribute['year']  : '';
+        $month = isset($attribute['month']) ? $attribute['month'] : '';
+        $day   = isset($attribute['day'])   ? $attribute['day']   : '';
 
         $date = '';
         if (($year !== '') && ($month !== '') && ($day !== '')) {

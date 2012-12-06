@@ -26,7 +26,7 @@
  * 
  * @package    tima
  * @subpackage tima_Filter
- * @version    SVN: $Id: SessionGateway.class.php 19 2007-09-07 07:51:47Z do_ikare $
+ * @version    SVN: $Id: SessionGateway.class.php 6 2007-08-17 08:46:57Z do_ikare $
  */
 class Filter_SessionGateway
 {

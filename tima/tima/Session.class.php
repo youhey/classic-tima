@@ -32,7 +32,7 @@
  * - セッションの活動状態の把握
  * 
  * @package  tima
- * @version  SVN: $Id: Session.class.php 6 2007-08-17 08:46:57Z do_ikare $
+ * @version  SVN: $Id: Session.class.php 37 2007-10-12 06:51:54Z do_ikare $
  */
 class Session
 {
@@ -46,20 +46,12 @@ class Session
     var $_namespace = '';
 
     /**
-     * クッキの有効時間（秒）
-     * 
-     * @var    integer
-     * @access private
-     */
-    var $_lifetime = 0;
-
-    /**
      * セッションのクッキ使用有無
      * 
      * @var    boolean
      * @access private
      */
-    var $_useCookies = true;
+    var $_useCookies = null;
 
     /**
      * コンストラクタ
@@ -71,7 +63,8 @@ class Session
      */
     function Session($namespace = 'noname', $session_name = null, $lifetime = null)
     {
-        $this->_namespace = $namespace;
+        $this->_namespace  = $namespace;
+        $this->_useCookies = (bool)ini_get('session.use_cookies');
 
         if ($this->isStarted()) {
             // セッションが開始されていれば、名前空間の初期化
@@ -80,18 +73,16 @@ class Session
             }
         } else {
             // セッションが開始前ならば初期化情報を更新
-
-            $this->_useCookies = (bool)ini_get('session.use_cookies');
-
             if (isset($session_name)) {
                 if (!is_string($session_name) || ($session_name === '')) {
+                    header('HTTP/1.1 500 Internal Server Error');
                     trigger_error(
-                        "Unable to construct the 'Session' - " . 
-                            "session name demands a non-empty string", 
-                        E_USER_WARNING);
-                } else {
-                    session_name($session_name);
+                        'Unable to construct the Session: ' . 
+                            'Session name demands a non-empty string', 
+                        E_USER_Error);
+                        exit;
                 }
+                session_name($session_name);
             }
 
             if (isset($lifetime) && $this->_useCookies) {
@@ -103,94 +94,28 @@ class Session
     }
 
     /**
-     * セッションIDを返却
-     *
-     * @param  void
-     * @return string  セッションID
-     * @access public
-     */
-    function getId()
-    {
-        return session_id();
-    }
-
-    /**
-     * セッションIDを新たに設定
-     * 
-     * セッションの保存方法は「ファイル」固定であることを前提とするので、
-     * セッションIDは[a-zA-Z0-9]の範囲内のランダムな文字列を期待
-     * 
-     * @param  string  $id セッションID
-     * @return boolean
-     * @access public
-     */
-    function setId($id)
-    {
-        if (headers_sent($filename, $linenum)) {
-            trigger_error(
-                'Unable to set the session-id, ' . 
-                    "sent to the browser in $filename/$linenum", 
-                E_USER_WARNING);
-            return false;
-        }
-        if (!is_string($id) || ($id === '') || !preg_match('/^[a-z0-9]+$/i', $id)) {
-            trigger_error(
-                'Unable to set the session-id - ' . 
-                    'session-id demands a non-empty string ([a-zA-Z0-9]).', 
-                E_USER_WARNING);
-            return false;
-        }
-
-        session_id($id);
-
-        return true;
-    }
-
-    /**
-     * セッション名を返却
-     * 
-     * @param  void
-     * @return string
-     * @access public
-     */
-    function getSessionName()
-    {
-        return session_name();
-    }
-
-    /**
      * セッションを開始
-     * 
-     * 二重の呼び出しまたは外部でのセッションの開始を許さない
-     * ここで開始したものが唯一の始動となる
-     * 
-     * セッションIDの固定化を最小限に抑制するよう一定条件でセッションを再生成
-     * - 未使用のセッション（初めて開始されるセッション）
-     * - 1時間以上経過したセッション
-     * - 100分の1の確率
+     * - 二重の呼び出しまたは外部でのセッションの開始を許さない
+     *  - ここで開始したものが唯一の始動となる
+     * - セッションIDの固定化を最小限に抑制するよう一定条件でセッションを再生成
+     *  - 未使用のセッション（初めて開始されるセッション）
+     *  - 1時間以上経過したセッション
+     *  - 100分の1の確率
      *
      * @param  void
-     * @return boolean
+     * @return void
      * @access public
      */
     function start()
     {
-        if (headers_sent($filename, $linenum)) {
-            trigger_error(
-                'Unable to start the session - ' . 
-                    "sent to the browser. in ${filename}/${linenum}", 
-                E_USER_WARNING);
-            return false;
-        }
-        if ($this->_status('started') || defined('SID')) {
-            trigger_error('Session has already been start.', E_USER_WARNING);
-            return false;
+        if ($this->_status('started')) {
+            header('HTTP/1.1 500 Internal Server Error');
+            trigger_error('Session has already been start', E_USER_ERROR);
+            exit;
         }
 
-        if (session_start() === false) {
-            trigger_error('Unable to start the session.', E_USER_WARNING);
-            return false;
-        }
+        session_start();
+        $nowtime = time();
 
         // ステータス更新
         $this->_status('started', true);
@@ -199,77 +124,31 @@ class Session
 
         // 環境準備
         if (!isset($_SESSION['__sc'])) {
-            $_SESSION['__sc'] = array();
+            $_SESSION['__sc'] = array('__started' => $nowtime);
+        }
+        if (!isset($_SESSION['__sc']['__started'])) {
+            $_SESSION['__sc']['__started'] = $nowtime;
         }
         if (!isset($_SESSION['__sc'][$this->_namespace])) {
             $_SESSION['__sc'][$this->_namespace] = array();
         }
 
         // 条件により再生成
-        $nowtime = time();
-        $prime   = 
-            (isset($_SESSION['__sc']['__started']) ? 
-                $_SESSION['__sc']['__started'] : null);
-        if (($prime === null) || ($prime < ($nowtime-HOUR)) || (rand(0,100) > 99)) {
+        $prime = $_SESSION['__sc']['__started'];
+        if (($prime < ($nowtime - HOUR)) || (mt_rand(0, 100) > 99)) {
             $this->regenerate();
-
-            $_SESSION['__sc']['__started'] = $nowtime;
-            $_SESSION['__sc']['__client']  = array(
-                    'ip_address' => (isset($_SERVER['REMOTE_ADDR']) ? 
-                        $_SERVER['REMOTE_ADDR'] : null),
-                    'user_agent' => (isset($_SERVER['HTTP_USER_AGENT']) ? 
-                        $_SERVER['HTTP_USER_AGENT'] : null),
-                );
         }
-
-        return true;
-    }
-
-    /**
-     * セッションを破棄
-     * 
-     * - セッションが開始されいなければ異常終了します
-     * - ロック状況は無視します
-     * 
-     * @param  void
-     * @return boolean
-     * @access public
-     */
-    function destroy()
-    {
-        if (!$this->_status('started')) {
-            header('HTTP/1.1 500 Internal Server Error');
-            trigger_error(
-                'Unable to destroy the session - session does not begin.', 
-                E_USER_WARNING);
-            return false;
-        }
-        // session_destroy() はファイルを削除するだけでメモリの開放まではしないため
-        $_SESSION = array();
-        session_destroy();
-
-        $this->_status('started', false);
-        $this->_status('readable', false);
-        $this->_status('writable', false);
-
-        if ($this->_useCookies) {
-            $session_name = session_name();
-            if (array_key_exists($session_name, $_COOKIE)) {
-                setcookie($session_name, '', 0, '/');
-            }
-        }
-
-        return true;
     }
 
     /**
      * セッションを再生
-     *
      * - セッションが開始されいなければ異常終了します
      * - ロック状況は無視します
+     * - このクラスの管理外のデータは復元されません
+     *  - $_SESSION[__SC][*]のみ復元
      * 
      * @param  void
-     * @return boolean
+     * @return void
      * @access public
      */
     function regenerate()
@@ -277,9 +156,9 @@ class Session
         if (!$this->_status('started')) {
             header('HTTP/1.1 500 Internal Server Error');
             trigger_error(
-                'Unable to regenerate the session - session does not begin.', 
+                'Unable to regenerate the session: Session does not begin', 
                 E_USER_WARNING);
-            return false;
+            exit;
         }
 
         // セッション情報を一時的に退避してから消去
@@ -297,9 +176,14 @@ class Session
         $old_session_id = session_id();
         session_regenerate_id();
 
+        // この状態では古いセッション・データもロックされたまま
+        // 一時的に書き込みを終了して削除可能な状態にする
+        session_write_close();
+        session_start();
+
         // 不要となったセッション・ファイルを削除
         $old_session_file = 
-            session_save_path() . DIRECTORY_SEPARATOR . 'sess_' . $old_session_id;
+            session_save_path() . DS . 'sess_' . $old_session_id;
         if (file_exists($old_session_file)) {
             @unlink($old_session_file);
         }
@@ -310,138 +194,80 @@ class Session
 
         // セッション情報を復元
         $_SESSION['__sc'] = $tmp;
-
-        return true;
     }
 
     /**
-     * セッション値を登録
+     * セッションを破棄
+     * - セッションが開始されいなければ異常終了します
+     * - ロック状況は無視します
+     * 
+     * @param  void
+     * @return void
+     * @access public
+     */
+    function destroy()
+    {
+        if (!$this->_status('started')) {
+            header('HTTP/1.1 500 Internal Server Error');
+            trigger_error(
+                'Unable to destroy the session: Session does not begin.', 
+                E_USER_ERROR);
+            exit;
+        }
+
+        // session_destroy() はファイル削除のみ／メモリ開放は手動
+        $_SESSION = array();
+        session_destroy();
+
+        $this->_status('started', false);
+        $this->_status('readable', false);
+        $this->_status('writable', false);
+
+        if ($this->_useCookies) {
+            $session_name = session_name();
+            if (array_key_exists($session_name, $_COOKIE)) {
+                setcookie($session_name, '', 0, '/');
+            }
+        }
+    }
+
+    /**
+     * セッションに値を保存
      *
-     * @param  string  $varkey   キー
-     * @param  mixed   $varvalue 値
-     * @return boolean
+     * @param  string $varkey
+     * @param  mixed  $varvalue
+     * @return void
      * @access public
      */
     function set($varkey, $varvalue)
     {
-        if (!$this->_status('started') || !$this->_status('writable')) {
-            return false;
+        if ($this->_status('started') && $this->_status('writable')) {
+            $_SESSION['__sc'][$this->_namespace][$varkey] = $varvalue;
+        } else {
+            trigger_error('Unable to write the session', E_USER_NOTICE);
         }
-
-        $_SESSION['__sc'][$this->_namespace][$varkey] = $varvalue;
-
-        return true;
     }
 
     /**
-     * セッション一時保存領域に値を登録
-     * 
-     * @param  string  $varkey   キー
-     * @param  mixed   $varvalue 値
-     * @return boolean
-     * @access public
-     */
-    function setFlash($varkey, $varvalue)
-    {
-        if (!$this->_status('started') || !$this->_status('writable')) {
-            return false;
-        }
-
-        if (!isset($_SESSION['__sc'][$this->_namespace]['__flash'])) {
-            $_SESSION['__sc'][$this->_namespace]['__flash'] = array();
-        }
-        $_SESSION['__sc'][$this->_namespace]['__flash'][$varkey] = $varvalue;
-
-        return $varvalue;
-    }
-
-    /**
-     * セッション値を返却
+     * セッションの値を返却
      *
-     * @param  string  $varkey キー
+     * @param  string $varkey
      * @return mixed
      * @access public
      */
     function get($varkey)
     {
-        if (!$this->_status('started') || !$this->_status('readable')) {
-            return null;
-        }
-        if (!isset($_SESSION['__sc'][$this->_namespace][$varkey])) {
-            return null;
-        }
+        $varvalue = null;
 
-        return $_SESSION['__sc'][$this->_namespace][$varkey];
-    }
-
-    /**
-     * セッション値を返却
-     *
-     * @param  void
-     * @return array|null
-     * @access public
-     */
-    function getAll()
-    {
-        if (!$this->_status('started') || !$this->_status('readable')) {
-            return null;
-        }
-
-        $buf = array();
-        foreach ($_SESSION['__sc'][$this->_namespace] as $varkey => $varvalue) {
-            if (strpos($varkey, '__') === 0) {
-                continue;
+        if ($this->_status('started') && $this->_status('readable')) {
+            if (isset($_SESSION['__sc'][$this->_namespace][$varkey])) {
+                $varvalue = $_SESSION['__sc'][$this->_namespace][$varkey];
             }
-            $buf[$varkey] = $varvalue;
+        } else {
+            trigger_error('Unable to read the session', E_USER_NOTICE);
         }
-
-        return $buf;
-    }
-
-    /**
-     * セッション一時保存領域の値を返却
-     * 
-     * セッション一時保存領域は一回きりの使いきりなので、
-     * 保存されていた値は返却と同時に抹消
-     * 
-     * @param  string  $varkey キー
-     * @return mixed
-     * @access public
-     */
-    function getFlash($varkey)
-    {
-        if (!$this->_status('started') || !$this->_status('readable')) {
-            return null;
-        }
-        if (!isset($_SESSION['__sc'][$this->_namespace]['__flash'][$varkey])) {
-            return null;
-        }
-
-        $varvalue = $_SESSION['__sc'][$this->_namespace]['__flash'][$varkey];
-        unset($_SESSION['__sc'][$this->_namespace]['__flash'][$varkey]);
 
         return $varvalue;
-    }
-
-    /**
-     * セッション値を削除
-     *
-     * @param  string  $varkey キー
-     * @return boolean
-     * @access public
-     */
-    function remove($varkey)
-    {
-        if (!$this->_status('started') || !$this->_status('writable')) {
-            return false;
-        }
-        if (!array_key_exists($varkey, $_SESSION['__sc'][$this->_namespace])) {
-            return false;
-        }
-
-        unset($_SESSION['__sc'][$this->_namespace][$varkey]);
-
-        return true;
     }
 
     /**
@@ -453,11 +279,31 @@ class Session
      */
     function exists($varkey)
     {
-        if (!$this->_status('started')) {
+        if (!$this->_status('started') || !$this->_status('readable')) {
+            trigger_error('Unable to read the session', E_USER_NOTICE);
             return false;
         }
 
-        return array_key_exists($varkey, $_SESSION['__sc'][$this->_namespace]);
+        return
+            array_key_exists($varkey, $_SESSION['__sc'][$this->_namespace]);
+    }
+
+    /**
+     * セッション値を削除
+     *
+     * @param  string $varkey
+     * @return void
+     * @access public
+     */
+    function remove($varkey)
+    {
+        if ($this->_status('started') && $this->_status('writable')) {
+            if (array_key_exists($varkey, $_SESSION['__sc'][$this->_namespace])) {
+                unset($_SESSION['__sc'][$this->_namespace][$varkey]);
+            }
+        } else {
+            trigger_error('Unable to write the session', E_USER_NOTICE);
+        }
     }
 
     /**
@@ -472,16 +318,81 @@ class Session
      */
     function clear()
     {
-        if (!$this->_status('started')) {
-            trigger_error(
-                'Unable to clear the session - session does not begin.', 
-                E_USER_WARNING);
-            return false;
+        if ($this->_status('started') && $this->_status('writable')) {
+            $_SESSION['__sc'][$this->_namespace] = array();
+        } else {
+            trigger_error('Unable to write the session', E_USER_NOTICE);
+        }
+    }
+
+    /**
+     * セッションの値を全て返却
+     *
+     * @param  void
+     * @return array
+     * @access public
+     */
+    function getAll()
+    {
+        $buf = array();
+
+        if ($this->_status('started') && $this->_status('readable')) {
+            foreach ($_SESSION['__sc'][$this->_namespace] as $varkey => $varvalue) {
+                if (strpos($varkey, '__') === 0) {
+                    continue;
+                }
+                $buf[$varkey] = $varvalue;
+            }
+        } else {
+            trigger_error('Unable to read the session', E_USER_NOTICE);
         }
 
-        $_SESSION['__sc'][$this->_namespace] = array();
+        return $buf;
+    }
 
-        return true;
+    /**
+     * セッションの一時保存領域に値を保存
+     * 
+     * @param  string $varkey
+     * @param  mixed  $varvalue
+     * @return void
+     * @access public
+     */
+    function setFlash($varkey, $varvalue)
+    {
+        if ($this->_status('started') && $this->_status('writable')) {
+            if (!isset($_SESSION['__sc'][$this->_namespace]['__flash'])) {
+                $_SESSION['__sc'][$this->_namespace]['__flash'] = array();
+            }
+            $_SESSION['__sc'][$this->_namespace]['__flash'][$varkey] = $varvalue;
+        } else {
+            trigger_error('Unable to write the session', E_USER_NOTICE);
+        }
+    }
+
+    /**
+     * セッションの一時保存領域から値を返却
+     * - セッション一時保存領域は呼び出された値は削除する
+     * - 一回だけの呼び出しを保証する
+     * 
+     * @param  string $varkey
+     * @return mixed
+     * @access public
+     */
+    function getFlash($varkey)
+    {
+        $varvalue = null;
+
+        if ($this->_status('started') && $this->_status('readable')) {
+            if (isset($_SESSION['__sc'][$this->_namespace]['__flash'][$varkey])) {
+                $varvalue = $_SESSION['__sc'][$this->_namespace]['__flash'][$varkey];
+                unset($_SESSION['__sc'][$this->_namespace]['__flash'][$varkey]);
+            }
+        } else {
+            trigger_error('Unable to read the session', E_USER_NOTICE);
+        }
+
+        return $varvalue;
     }
 
     /**
@@ -509,7 +420,34 @@ class Session
      */
     function isStarted()
     {
-        return $this->_status('started');
+        return 
+            $this->_status('started');
+    }
+
+    /**
+     * セッションIDを返却
+     *
+     * @param  void
+     * @return string  セッションID
+     * @access public
+     */
+    function getId()
+    {
+        return 
+            session_id();
+    }
+
+    /**
+     * セッション名を返却
+     * 
+     * @param  void
+     * @return string
+     * @access public
+     */
+    function getSessionName()
+    {
+        return 
+            session_name();
     }
 
     /**
@@ -555,6 +493,7 @@ class Session
             $state[$type] = $modif;
         }
 
-        return (isset($state[$type]) && $state[$type]);
+        return 
+            (isset($state[$type]) && $state[$type]);
     }
 }

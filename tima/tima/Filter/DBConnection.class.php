@@ -27,7 +27,7 @@
  * 
  * @package    tima
  * @subpackage tima_Filter
- * @version    SVN: $Id: DBConnection.class.php 35 2007-09-28 02:03:08Z do_ikare $
+ * @version    SVN: $Id: DBConnection.class.php 25 2007-09-11 10:42:33Z do_ikare $
  */
 class Filter_DBConnection
 {
@@ -86,10 +86,7 @@ class Filter_DBConnection
     function after(&$front)
     {
         $db = &SingletonDB::getInstance();
-        if (isset($db->connection)) {
-            $db->rollback();
-            $db->disconnect();
-        }
+        $db->disconnect();
 
         $logger = &$front->getLogger();
         $logger->trace(__CLASS__ . "の後処理を実行");
